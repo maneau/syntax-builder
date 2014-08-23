@@ -20,7 +20,7 @@ public class SyntaxBuilderTest {
 
     @Test
     public void testSimpleSyntax() throws Exception {
-        assertTrue(SyntaxBuilder.init().begin().term("Test").end().soutPrint().isValid());
+        assertTrue(SyntaxBuilder.builder().begin().term("Test").end().soutPrint().isValid());
     }
 
     /**
@@ -32,7 +32,7 @@ public class SyntaxBuilderTest {
     public void testCheckMissingEnd() throws Exception {
         thrown.expect(InvalidSyntaxException.class);
         thrown.expectMessage(ErrorCodes.invalidSyntaxMissingCloseParenthesis(1));
-        SyntaxBuilder.init().begin().term("term1").soutPrint().check();
+        SyntaxBuilder.builder().begin().term("term1").soutPrint().check();
     }
 
     /**
@@ -44,7 +44,7 @@ public class SyntaxBuilderTest {
     public void testCheckMissingBegin() throws Exception {
         thrown.expect(InvalidSyntaxException.class);
         thrown.expectMessage(ErrorCodes.INVALID_SYNTAX_CLOSING_NONE_OPENED_PARENTHESIS);
-        SyntaxBuilder.init().term("term1").end().soutPrint().check();
+        SyntaxBuilder.builder().term("term1").end().soutPrint().check();
     }
 
     /**
@@ -56,24 +56,24 @@ public class SyntaxBuilderTest {
     public void testCheckSuccessiveOperator() throws Exception {
         thrown.expect(InvalidSyntaxException.class);
         thrown.expectMessage(ErrorCodes.INVALID_SYNTAX_WAITING_FOR_A_TERM);
-        SyntaxBuilder.init().begin().term("term1").and().or().term("term2").end().soutPrint().check();
+        SyntaxBuilder.builder().begin().term("term1").and().or().term("term2").end().soutPrint().check();
     }
 
     @Test
     public void testAddTerm() throws Exception {
-        String res = SyntaxBuilder.init().term("Test", "Value and data").soutPrint().check().toString();
+        String res = SyntaxBuilder.builder().term("Test", "Value and data").soutPrint().check().toString();
         assertEquals(res, "Test:(Value and data)");
     }
 
     @Test
     public void testLog() throws Exception {
-        SyntaxBuilder.init().term("Test", "Value").logDebug(LOGGER).check();
+        SyntaxBuilder.builder().term("Test", "Value").logDebug(LOGGER).check();
     }
 
     @Test
     public void testIncludeSyntaxBuilder() throws Exception {
-        SyntaxBuilder sb = SyntaxBuilder.init().term("term1", "value1").and(
-                SyntaxBuilder.init().term("term2", "value2")
+        SyntaxBuilder sb = SyntaxBuilder.builder().term("term1", "value1").and(
+                SyntaxBuilder.builder().term("term2", "value2")
         ).logInfo(LOGGER).check();
         assertEquals("term1:(value1) AND (term2:(value2))", sb.toString());
     }
@@ -85,11 +85,11 @@ public class SyntaxBuilderTest {
      */
     @Test
     public void testEscapedCars() throws Exception {
-        assertEquals("term1:(value1)", SyntaxBuilder.init().term("term1", "value1").check().soutPrint().toString());
-        assertEquals("term1:(value\\+)", SyntaxBuilder.init().term("term1", "value+").check().soutPrint().toString());
-        assertEquals("term1:(value \\{)", SyntaxBuilder.init().term("term1", "value {").check().soutPrint().toString());
-        assertEquals("term1:(value \\(\\)\\{\\}\\-\\!\\+\\?)", SyntaxBuilder.init().term("term1", "value (){}-!+?").check().soutPrint().toString());
-        assertEquals("term1:(\"value \\(\\)\\{\\}\\-\\!\\+\\?\")", SyntaxBuilder.init().exactTerm("term1", "value (){}-!+?").check().soutPrint().toString());
+        assertEquals("term1:(value1)", SyntaxBuilder.builder().term("term1", "value1").check().soutPrint().toString());
+        assertEquals("term1:(value\\+)", SyntaxBuilder.builder().term("term1", "value+").check().soutPrint().toString());
+        assertEquals("term1:(value \\{)", SyntaxBuilder.builder().term("term1", "value {").check().soutPrint().toString());
+        assertEquals("term1:(value \\(\\)\\{\\}\\-\\!\\+\\?)", SyntaxBuilder.builder().term("term1", "value (){}-!+?").check().soutPrint().toString());
+        assertEquals("term1:(\"value \\(\\)\\{\\}\\-\\!\\+\\?\")", SyntaxBuilder.builder().exactTerm("term1", "value (){}-!+?").check().soutPrint().toString());
     }
 
     /**
@@ -99,26 +99,38 @@ public class SyntaxBuilderTest {
      */
     @Test
     public void testMustAndNot() throws Exception {
-        assertEquals("+(term1:(value1))", SyntaxBuilder.init().must("term1", "value1").check().soutPrint().toString());
-        assertEquals("-(term1:(value1))", SyntaxBuilder.init().not("term1", "value1").check().soutPrint().toString());
+        assertEquals("+(term1:(value1))", SyntaxBuilder.builder().must("term1", "value1").check().soutPrint().toString());
+        assertEquals("-(term1:(value1))", SyntaxBuilder.builder().not("term1", "value1").check().soutPrint().toString());
+    }
+
+    /**
+     * Testing must and not operations
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testAndMultiTerms() throws Exception {
+        SyntaxBuilder sb = new SyntaxBuilder().term("term0", "value0")
+                .and("term1", "value1", "value2", "value3")
+                .check().soutPrint();
+
+        assertEquals("term0:(value0) AND term1:(value1) AND term1:(value2) AND term1:(value3)", sb.toString());
     }
 
     @Test
     public void testIncludeSyntaxBuilderWithParenthesis() throws Exception {
-        SyntaxBuilder sb1 = SyntaxBuilder.init().term("term2", "value2").and().begin().exactTerm("term3", "value 3").end().check();
-        SyntaxBuilder sb2 = SyntaxBuilder.init().begin()
+        SyntaxBuilder sb1 = SyntaxBuilder.builder().term("term2", "value2").and().begin()
+                .exactTerm("term3", "value 3").end().check().soutPrint();
+        SyntaxBuilder sb2 = SyntaxBuilder.builder().begin()
                 .term("term1", "value1").and(sb1)
-                .end().logInfo(LOGGER).check();
+                .end().logInfo(LOGGER).check().soutPrint();
 
-        System.out.println("PRETTY>" + sb2.toPrettyString());
-        System.out.println("RES   >" + sb2.toString());
+        assertEquals("(term1:(value1) AND (term2:(value2) AND (term3:(\"value 3\"))))",sb2.toString());
     }
 
     @Test
     public void testPrettyPrint() throws Exception {
-        System.out.println("--------------------");
-        System.out.println("testPrettyPrint");
-        SyntaxBuilder sb = SyntaxBuilder.init()
+        SyntaxBuilder sb = SyntaxBuilder.builder()
                 .begin()
                 .begin().term("Test", "Value").end()
                 .and()
@@ -134,13 +146,21 @@ public class SyntaxBuilderTest {
 
         System.out.println("RES>" + syntax);
         assertEquals("((Test:(Value)) AND (Test2) OR (Test2:(\"this is an exact term\"))) AND YOU", syntax);
-        assertEquals("\n(\n\t(\n\t\tTest:(Value)\n" +
-                "\t)\n\t AND \n\t(\n\t\tTest2\n\t)\n\t OR \n" +
+        assertEquals("\n(\n" +
+                "\t(\n" +
+                "\t\tTest:(Value)\n" +
+                "\t)\n" +
+                "\t AND \n" +
+                "\t(\n" +
+                "\t\tTest2\n" +
+                "\t)\n" +
+                "\t OR \n" +
                 "\t(\n" +
                 "\t\tTest2:(\"this is an exact term\")\n" +
                 "\t)\n" +
                 ")\n" +
-                " AND \nYOU", prettySyntax);
+                " AND \n" +
+                "YOU", prettySyntax);
     }
 
     @Test
@@ -151,9 +171,9 @@ public class SyntaxBuilderTest {
         long start = System.currentTimeMillis();
         long stringSize = 0;
         for (long i = 0; i < iterations; i++) {
-            SyntaxBuilder sbPrincipal = SyntaxBuilder.init().term("term0");
+            SyntaxBuilder sbPrincipal = SyntaxBuilder.builder().term("term0");
             for (long j = 0; j < 100; j++) {
-                SyntaxBuilder sb1 = SyntaxBuilder.init()
+                SyntaxBuilder sb1 = SyntaxBuilder.builder()
                         .begin().term("term" + j, String.valueOf(j)).end()
                         .and()
                         .begin().term("termWithoutValue").end()

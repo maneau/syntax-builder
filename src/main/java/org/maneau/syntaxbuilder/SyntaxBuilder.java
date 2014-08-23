@@ -67,9 +67,6 @@ public class SyntaxBuilder {
     /*
      * Privates methods
      */
-    private SyntaxBuilder() {
-        this.sb = new StringBuilder();
-    }
 
     /**
      * Private method for indent the text
@@ -102,13 +99,17 @@ public class SyntaxBuilder {
         return this;
     }
 
+    private SyntaxBuilder appendExact(String s) {
+        sb.append(EXACT).append(s).append(EXACT);
+        return this;
+    }
+
     private SyntaxBuilder appendTerm(String term, String value) {
         sb.append(term).append(EQUAL).append(BEGIN).append(escapeChar(value)).append(END);
         return this;
     }
 
     private SyntaxBuilder append(SyntaxBuilder s) {
-        //sb.append(s.getStringBuilder());
         sb.append(s.toString());
         return this;
     }
@@ -127,6 +128,7 @@ public class SyntaxBuilder {
 
     /**
      * Method to escape special char for lucene
+     *
      * @param s containing special chars
      * @return string containing escaped chars
      */
@@ -138,7 +140,14 @@ public class SyntaxBuilder {
      * Public methods
      */
 
-    public static SyntaxBuilder init() {
+    /**
+     * Constructor
+     */
+    public SyntaxBuilder() {
+        this.sb = new StringBuilder();
+    }
+
+    public static SyntaxBuilder builder() {
         return new SyntaxBuilder();
     }
 
@@ -150,15 +159,45 @@ public class SyntaxBuilder {
         return this.and().term(s);
     }
 
+    /**
+     * Operator AND with a list of strings
+     *
+     * @param term
+     * @param values
+     * @return SyntaxBuilder
+     * @throws InvalidSyntaxException
+     */
+    public SyntaxBuilder and(String term, String... values) throws InvalidSyntaxException {
+        for (String value : values) {
+            this.and().term(term, value);
+        }
+        return this;
+    }
+
     public SyntaxBuilder and(SyntaxBuilder syntax) throws InvalidSyntaxException {
         return this.and().begin().include(syntax).end();
+    }
+
+    /**
+     * Operator OR with a list of strings
+     *
+     * @param term
+     * @param values
+     * @return SyntaxBuilder
+     * @throws InvalidSyntaxException
+     */
+    public SyntaxBuilder or(String term, String... values) throws InvalidSyntaxException {
+        for (String value : values) {
+            this.or().term(term, value);
+        }
+        return this;
     }
 
     public SyntaxBuilder or() throws InvalidSyntaxException {
         return this.op(Op.OR);
     }
 
-    public SyntaxBuilder begin() {
+    public SyntaxBuilder begin() throws InvalidSyntaxException {
         return this.indent(nbOpenParenthesis++).append(BEGIN);
     }
 
@@ -173,7 +212,7 @@ public class SyntaxBuilder {
         return this;
     }
 
-    public SyntaxBuilder include(SyntaxBuilder syntax) {
+    public SyntaxBuilder include(SyntaxBuilder syntax) throws InvalidSyntaxException {
         waiting4term = false;
         return this.indent().append(syntax);
     }
@@ -191,9 +230,9 @@ public class SyntaxBuilder {
      * @param value
      * @return
      */
-    public SyntaxBuilder term(String term, String value) {
+    public SyntaxBuilder term(String term, String value) throws InvalidSyntaxException {
         waiting4term = false;
-        return this.indent().appendTerm(term,value);
+        return this.indent().appendTerm(term, value);
     }
 
     /**
@@ -207,7 +246,7 @@ public class SyntaxBuilder {
      */
     public SyntaxBuilder must(String term, String value) throws InvalidSyntaxException {
         waiting4term = false;
-        return this.indent().append(MUST).append(BEGIN).appendTerm(term,value).append(END);
+        return this.indent().append(MUST).append(BEGIN).appendTerm(term, value).append(END);
     }
 
     /**
@@ -221,7 +260,7 @@ public class SyntaxBuilder {
      */
     public SyntaxBuilder not(String term, String value) throws InvalidSyntaxException {
         waiting4term = false;
-        return this.indent().append(NOT).append(BEGIN).appendTerm(term,value).append(END);
+        return this.indent().append(NOT).append(BEGIN).appendTerm(term, value).append(END);
     }
 
     /**
@@ -233,9 +272,9 @@ public class SyntaxBuilder {
      * @param value
      * @return
      */
-    public SyntaxBuilder exactTerm(String term, String value) {
+    public SyntaxBuilder exactTerm(String term, String value) throws InvalidSyntaxException {
         waiting4term = false;
-        return this.indent().append(term).append(EQUAL).append(BEGIN).append(EXACT).append(escapeChar(value)).append(EXACT).append(END);
+        return this.indent().append(term).append(EQUAL).append(BEGIN).appendExact(escapeChar(value)).append(END);
     }
 
     /**
