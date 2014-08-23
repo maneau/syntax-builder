@@ -4,6 +4,8 @@ import org.maneau.syntaxbuilder.exceptions.InvalidSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.regex.Pattern;
+
 /**
  * Created by maneau on 22/08/2014.
  */
@@ -31,6 +33,12 @@ public class SyntaxBuilder {
     private static final String EXACT = "\"";
     private static final String INDENT = "\t";
     private static final String NEW_LINE = "\n";
+    private static final String NOT = "-";
+    private static final String MUST = "+";
+
+    private static final String LUCENE_ESCAPE_CHARS = "[\\\\+\\-\\!\\(\\)\\:\\^\\]\\{\\}\\~\\*\\?]";
+    private static final Pattern LUCENE_PATTERN = Pattern.compile(LUCENE_ESCAPE_CHARS);
+    private static final String REPLACEMENT_STRING = "\\\\$0";
 
     protected StringBuilder getStringBuilder() {
         return sb;
@@ -94,6 +102,11 @@ public class SyntaxBuilder {
         return this;
     }
 
+    private SyntaxBuilder appendTerm(String term, String value) {
+        sb.append(term).append(EQUAL).append(BEGIN).append(escapeChar(value)).append(END);
+        return this;
+    }
+
     private SyntaxBuilder append(SyntaxBuilder s) {
         //sb.append(s.getStringBuilder());
         sb.append(s.toString());
@@ -110,6 +123,15 @@ public class SyntaxBuilder {
             waiting4term = true;
         }
         return this;
+    }
+
+    /**
+     * Method to escape special char for lucene
+     * @param s containing special chars
+     * @return string containing escaped chars
+     */
+    private String escapeChar(final String s) {
+        return LUCENE_PATTERN.matcher(s).replaceAll(REPLACEMENT_STRING);
     }
 
     /*
@@ -163,7 +185,7 @@ public class SyntaxBuilder {
     /**
      * Generate a term equal to value
      * </p>
-     * Example of generation : term:"value"
+     * Example of generation : term:value
      *
      * @param term
      * @param value
@@ -171,7 +193,35 @@ public class SyntaxBuilder {
      */
     public SyntaxBuilder term(String term, String value) {
         waiting4term = false;
-        return this.indent().append(term).append(EQUAL).append(value);
+        return this.indent().appendTerm(term,value);
+    }
+
+    /**
+     * Generate a must on a term
+     * </p>
+     * Example of generation : +(term:value)
+     *
+     * @param term
+     * @param value
+     * @return
+     */
+    public SyntaxBuilder must(String term, String value) throws InvalidSyntaxException {
+        waiting4term = false;
+        return this.indent().append(MUST).append(BEGIN).appendTerm(term,value).append(END);
+    }
+
+    /**
+     * Generate a not clause on a term
+     * </p>
+     * Example of generation : -(term:value)
+     *
+     * @param term
+     * @param value
+     * @return
+     */
+    public SyntaxBuilder not(String term, String value) throws InvalidSyntaxException {
+        waiting4term = false;
+        return this.indent().append(NOT).append(BEGIN).appendTerm(term,value).append(END);
     }
 
     /**
@@ -185,7 +235,7 @@ public class SyntaxBuilder {
      */
     public SyntaxBuilder exactTerm(String term, String value) {
         waiting4term = false;
-        return this.indent().append(term).append(EQUAL).append(EXACT).append(value).append(EXACT);
+        return this.indent().append(term).append(EQUAL).append(BEGIN).append(EXACT).append(escapeChar(value)).append(EXACT).append(END);
     }
 
     /**

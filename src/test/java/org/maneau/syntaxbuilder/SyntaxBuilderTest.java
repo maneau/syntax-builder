@@ -1,5 +1,6 @@
 package org.maneau.syntaxbuilder;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -60,8 +61,8 @@ public class SyntaxBuilderTest {
 
     @Test
     public void testAddTerm() throws Exception {
-        String res = SyntaxBuilder.init().term("Test", "Value").soutPrint().check().toString();
-        assertEquals(res, "Test:Value");
+        String res = SyntaxBuilder.init().term("Test", "Value and data").soutPrint().check().toString();
+        assertEquals(res, "Test:(Value and data)");
     }
 
     @Test
@@ -71,9 +72,35 @@ public class SyntaxBuilderTest {
 
     @Test
     public void testIncludeSyntaxBuilder() throws Exception {
-        SyntaxBuilder.init().term("term1", "value1").and(
+        SyntaxBuilder sb = SyntaxBuilder.init().term("term1", "value1").and(
                 SyntaxBuilder.init().term("term2", "value2")
         ).logInfo(LOGGER).check();
+        assertEquals("term1:(value1) AND (term2:(value2))", sb.toString());
+    }
+
+    /**
+     * Testing escaped chars
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testEscapedCars() throws Exception {
+        assertEquals("term1:(value1)", SyntaxBuilder.init().term("term1", "value1").check().soutPrint().toString());
+        assertEquals("term1:(value\\+)", SyntaxBuilder.init().term("term1", "value+").check().soutPrint().toString());
+        assertEquals("term1:(value \\{)", SyntaxBuilder.init().term("term1", "value {").check().soutPrint().toString());
+        assertEquals("term1:(value \\(\\)\\{\\}\\-\\!\\+\\?)", SyntaxBuilder.init().term("term1", "value (){}-!+?").check().soutPrint().toString());
+        assertEquals("term1:(\"value \\(\\)\\{\\}\\-\\!\\+\\?\")", SyntaxBuilder.init().exactTerm("term1", "value (){}-!+?").check().soutPrint().toString());
+    }
+
+    /**
+     * Testing must and not operations
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testMustAndNot() throws Exception {
+        assertEquals("+(term1:(value1))", SyntaxBuilder.init().must("term1", "value1").check().soutPrint().toString());
+        assertEquals("-(term1:(value1))", SyntaxBuilder.init().not("term1", "value1").check().soutPrint().toString());
     }
 
     @Test
@@ -91,7 +118,7 @@ public class SyntaxBuilderTest {
     public void testPrettyPrint() throws Exception {
         System.out.println("--------------------");
         System.out.println("testPrettyPrint");
-        String res = SyntaxBuilder.init()
+        SyntaxBuilder sb = SyntaxBuilder.init()
                 .begin()
                 .begin().term("Test", "Value").end()
                 .and()
@@ -101,11 +128,23 @@ public class SyntaxBuilderTest {
                 .end()
                 .and("YOU")
                 .soutPrint()
-                .check().toString();
-        System.out.println("RES>" + res);
+                .check();
+        String syntax = sb.toString();
+        String prettySyntax = sb.toPrettyString();
+
+        System.out.println("RES>" + syntax);
+        assertEquals("((Test:(Value)) AND (Test2) OR (Test2:(\"this is an exact term\"))) AND YOU", syntax);
+        assertEquals("\n(\n\t(\n\t\tTest:(Value)\n" +
+                "\t)\n\t AND \n\t(\n\t\tTest2\n\t)\n\t OR \n" +
+                "\t(\n" +
+                "\t\tTest2:(\"this is an exact term\")\n" +
+                "\t)\n" +
+                ")\n" +
+                " AND \nYOU", prettySyntax);
     }
 
     @Test
+    @Ignore
     public void testPerf() throws Exception {
         final long iterations = 10000;
         long count = 0;
